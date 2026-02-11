@@ -12,10 +12,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "chart.bar.fill", accessibilityDescription: "Claude Usage")
             button.action = #selector(togglePopover)
             button.target = self
         }
+        updateIcon(usage: nil)
 
         let usageView = UsageView(
             service: service,
@@ -56,6 +56,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
               let orgId = KeychainHelper.load(key: "orgId") else { return }
         Task {
             await service.fetchUsage(sessionKey: sessionKey, orgId: orgId)
+            await MainActor.run {
+                updateIcon(usage: service.sessionUsage)
+            }
         }
     }
 
@@ -72,6 +75,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mainMenu.addItem(editMenuItem)
 
         NSApp.mainMenu = mainMenu
+    }
+
+    private func updateIcon(usage: Double?) {
+        let pct = usage ?? 0
+        let variableValue: Double = switch pct {
+        case ..<25: 0.0
+        case ..<50: 0.34
+        case ..<75: 0.67
+        default: 1.0
+        }
+        let image = NSImage(
+            systemSymbolName: "chart.bar.fill",
+            variableValue: variableValue,
+            accessibilityDescription: usage.map { "Claude Usage: \(Int($0))%" } ?? "Claude Usage"
+        )
+        statusItem.button?.image = image
     }
 
     private func openSettings() {
