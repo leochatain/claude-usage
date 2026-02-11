@@ -1,17 +1,11 @@
-//
-//  claude_usageApp.swift
-//  claude-usage
-//
-//  Created by Leo on 11/02/2026.
-//
-
-import SwiftUI
+import AppKit
 
 @main
-struct claude_usageApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+enum ClaudeUsageLauncher {
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.run()
     }
 }
