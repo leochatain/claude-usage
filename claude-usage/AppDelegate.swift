@@ -31,7 +31,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.contentViewController = hostingController
 
         if KeychainHelper.load(key: "sessionKey") == nil || KeychainHelper.load(key: "orgId") == nil {
-            showSetupWindow { [weak self] in self?.refresh() }
+            showSetupWindow(
+                onSave: { [weak self] in self?.refresh() },
+                onTogglePercentage: { [weak self] in
+                    guard let self else { return }
+                    self.updateIcon(usage: self.service.sessionUsage)
+                }
+            )
         } else {
             refresh()
         }
@@ -90,11 +96,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             variableValue: variableValue,
             accessibilityDescription: usage.map { "Claude Usage: \(Int($0))%" } ?? "Claude Usage"
         )
+        if UserDefaults.standard.bool(forKey: "showPercentage"), let usage {
+            let pctStr = "\(Int(usage))% "
+            let attributed = NSMutableAttributedString(
+                string: pctStr,
+                attributes: [
+                    .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
+                    .baselineOffset: -0.5
+                ]
+            )
+            statusItem.button?.attributedTitle = attributed
+            statusItem.button?.imagePosition = .imageTrailing
+        } else {
+            statusItem.button?.title = ""
+            statusItem.button?.imagePosition = .imageLeading
+        }
         statusItem.button?.image = image
     }
 
     private func openSettings() {
         popover.performClose(nil)
-        showSetupWindow { [weak self] in self?.refresh() }
+        showSetupWindow(
+            onSave: { [weak self] in self?.refresh() },
+            onTogglePercentage: { [weak self] in
+                guard let self else { return }
+                self.updateIcon(usage: self.service.sessionUsage)
+            }
+        )
     }
 }

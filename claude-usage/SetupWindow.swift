@@ -3,7 +3,7 @@ import AppKit
 
 private var setupWindowController: NSWindowController?
 
-func showSetupWindow(onSave: @escaping () -> Void) {
+func showSetupWindow(onSave: @escaping () -> Void, onTogglePercentage: @escaping () -> Void) {
     if let existing = setupWindowController {
         existing.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -17,7 +17,7 @@ func showSetupWindow(onSave: @escaping () -> Void) {
     }, onCancel: {
         setupWindowController?.close()
         setupWindowController = nil
-    })
+    }, onTogglePercentage: onTogglePercentage)
 
     let hostingController = NSHostingController(rootView: view)
     let window = NSWindow(contentViewController: hostingController)
@@ -35,8 +35,10 @@ func showSetupWindow(onSave: @escaping () -> Void) {
 private struct SetupView: View {
     @State private var orgId: String = KeychainHelper.load(key: "orgId") ?? ""
     @State private var sessionKey: String = KeychainHelper.load(key: "sessionKey") ?? ""
+    @AppStorage("showPercentage") private var showPercentage = false
     var onSave: () -> Void
     var onCancel: () -> Void
+    var onTogglePercentage: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -62,6 +64,13 @@ private struct SetupView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Divider()
+
+            Toggle("Show percentage in menu bar", isOn: $showPercentage)
+                .toggleStyle(.checkbox)
+                .font(.callout)
+                .onChange(of: showPercentage) { onTogglePercentage() }
 
             HStack {
                 Spacer()
