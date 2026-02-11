@@ -7,6 +7,75 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let service = UsageService()
     private var refreshTimer: Timer?
 
+    private enum IconState {
+        case normal(usage: Double)
+        case paidQuota
+        case outOfQuota
+        case loading
+
+        var variableValue: Double {
+            switch self {
+            case .normal(let usage):
+                switch usage {
+                case ..<25: return 0.0
+                case ..<50: return 0.34
+                case ..<75: return 0.67
+                default: return 1.0
+                }
+            case .paidQuota, .outOfQuota:
+                return 1.0
+            case .loading:
+                return 0.0
+            }
+        }
+
+        var symbolConfiguration: NSImage.SymbolConfiguration? {
+            switch self {
+            case .paidQuota:
+                return NSImage.SymbolConfiguration(hierarchicalColor: .orange)
+            case .outOfQuota:
+                return NSImage.SymbolConfiguration(hierarchicalColor: .systemGray)
+            case .normal, .loading:
+                return nil
+            }
+        }
+
+        var accessibilityDescription: String {
+            switch self {
+            case .normal(let usage):
+                return "Claude Usage: \(Int(usage))%"
+            case .paidQuota:
+                return "Claude Usage: Using paid credits"
+            case .outOfQuota:
+                return "Claude Usage: Out of quota"
+            case .loading:
+                return "Claude Usage"
+            }
+        }
+
+        var percentageText: String? {
+            switch self {
+            case .normal(let usage):
+                return "\(Int(usage))%"
+            case .paidQuota, .outOfQuota:
+                return "100%"
+            case .loading:
+                return nil
+            }
+        }
+
+        var textColor: NSColor {
+            switch self {
+            case .paidQuota:
+                return .orange
+            case .outOfQuota:
+                return .systemGray
+            case .normal, .loading:
+                return .labelColor
+            }
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMainMenu()
 
@@ -83,26 +152,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = mainMenu
     }
 
-    private func updateIcon(usage: Double?) {
-        let pct = usage ?? 0
-        let variableValue: Double = switch pct {
-        case ..<25: 0.0
-        case ..<50: 0.34
-        case ..<75: 0.67
-        default: 1.0
+    private func determineIconState() -> IconState {
+        guard let sessionUsage = service.sessionUsage else {
+            return .loading
         }
-        let image = NSImage(
+
+        if sessionUsage < 100 {
+            return .normal(usage: sessionUsage)
+        }
+
+        // Session quota exhausted (>= 100%)
+        let extraUsageEnabled = service.extraUsageEnabled ?? false
+        let usedCreditsCents = service.usedCreditsCents ?? 0
+        let monthlyLimitCents = service.monthlyLimitCents ?? 0
+
+        if extraUsageEnabled && usedCreditsCents < monthlyLimitCents {
+            return .paidQuota
+        } else {
+            return .outOfQuota
+        }
+    }
+
+    private func updateIcon(usage: Double?) {
+        let state = determineIconState()
+
+        // Create base image with variable value
+        var image = NSImage(
             systemSymbolName: "chart.bar.fill",
-            variableValue: variableValue,
-            accessibilityDescription: usage.map { "Claude Usage: \(Int($0))%" } ?? "Claude Usage"
+            variableValue: state.variableValue,
+            accessibilityDescription: state.accessibilityDescription
         )
-        if UserDefaults.standard.bool(forKey: "showPercentage"), let usage {
-            let pctStr = "\(Int(usage))% "
+
+        // Apply color configuration if needed
+        if let config = state.symbolConfiguration {
+            image = image?.withSymbolConfiguration(config)
+        }
+
+        // Update percentage text if enabled
+        if UserDefaults.standard.bool(forKey: "showPercentage"), let percentageText = state.percentageText {
+            let pctStr = "\(percentageText) "
             let attributed = NSMutableAttributedString(
                 string: pctStr,
                 attributes: [
                     .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
-                    .baselineOffset: -0.5
+                    .baselineOffset: -0.5,
+                    .foregroundColor: state.textColor
                 ]
             )
             statusItem.button?.attributedTitle = attributed
@@ -111,6 +205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusItem.button?.title = ""
             statusItem.button?.imagePosition = .imageLeading
         }
+
         statusItem.button?.image = image
     }
 
