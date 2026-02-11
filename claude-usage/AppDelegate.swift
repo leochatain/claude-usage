@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover!
     private let service = UsageService()
     private var refreshTimer: Timer?
+    private var fastPollTimer: Timer?
 
     private enum IconState {
         case normal(usage: Double)
@@ -111,9 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             refresh()
         }
 
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            self?.refresh()
-        }
+        startSlowPolling()
     }
 
     @objc private func togglePopover() {
@@ -123,6 +122,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             NSApp.activate(ignoringOtherApps: true)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            refresh()
+            startFastPolling()
         }
     }
 
@@ -207,6 +208,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         statusItem.button?.image = image
+    }
+
+    private func startFastPolling() {
+        refreshTimer?.invalidate()
+        fastPollTimer?.invalidate()
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            self?.refresh()
+        }
+        fastPollTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: false) { [weak self] _ in
+            self?.startSlowPolling()
+        }
+    }
+
+    private func startSlowPolling() {
+        fastPollTimer?.invalidate()
+        fastPollTimer = nil
+        refreshTimer?.invalidate()
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+            self?.refresh()
+        }
     }
 
     private func openSettings() {

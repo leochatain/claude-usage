@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import ServiceManagement
 
 private var setupWindowController: NSWindowController?
 
@@ -23,7 +24,7 @@ func showSetupWindow(onSave: @escaping () -> Void, onTogglePercentage: @escaping
     let window = NSWindow(contentViewController: hostingController)
     window.title = "Claude Usage — Setup"
     window.styleMask = [.titled, .closable]
-    window.setContentSize(NSSize(width: 420, height: 260))
+    window.setContentSize(NSSize(width: 420, height: 290))
     window.center()
 
     let controller = NSWindowController(window: window)
@@ -36,6 +37,7 @@ private struct SetupView: View {
     @State private var orgId: String = KeychainHelper.load(key: "orgId") ?? ""
     @State private var sessionKey: String = KeychainHelper.load(key: "sessionKey") ?? ""
     @AppStorage("showPercentage") private var showPercentage = false
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     var onSave: () -> Void
     var onCancel: () -> Void
     var onTogglePercentage: () -> Void
@@ -71,6 +73,21 @@ private struct SetupView: View {
                 .toggleStyle(.checkbox)
                 .font(.callout)
                 .onChange(of: showPercentage) { onTogglePercentage() }
+
+            Toggle("Launch at login", isOn: $launchAtLogin)
+                .toggleStyle(.checkbox)
+                .font(.callout)
+                .onChange(of: launchAtLogin) { _, newValue in
+                    do {
+                        if newValue {
+                            try SMAppService.mainApp.register()
+                        } else {
+                            try SMAppService.mainApp.unregister()
+                        }
+                    } catch {
+                        launchAtLogin = SMAppService.mainApp.status == .enabled
+                    }
+                }
 
             HStack {
                 Spacer()
