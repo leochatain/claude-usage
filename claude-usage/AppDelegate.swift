@@ -65,14 +65,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        var textColor: NSColor {
+        var textColor: NSColor? {
             switch self {
             case .paidQuota:
                 return .orange
             case .outOfQuota:
                 return .systemGray
             case .normal, .loading:
-                return .labelColor
+                return nil
             }
         }
     }
@@ -192,13 +192,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Update percentage text if enabled
         if UserDefaults.standard.bool(forKey: "showPercentage"), let percentageText = state.percentageText {
             let pctStr = "\(percentageText) "
+            var attributes: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
+                .baselineOffset: -0.6,
+            ]
+            if let textColor = state.textColor {
+                attributes[.foregroundColor] = textColor
+            }
             let attributed = NSMutableAttributedString(
                 string: pctStr,
-                attributes: [
-                    .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
-                    .baselineOffset: -0.6,
-                    .foregroundColor: state.textColor
-                ]
+                attributes: attributes
             )
             statusItem.button?.attributedTitle = attributed
             statusItem.button?.imagePosition = .imageTrailing
