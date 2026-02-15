@@ -19,8 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case .normal(let usage):
                 switch usage {
                 case ..<25: return 0.0
-                case ..<50: return 0.34
-                case ..<75: return 0.67
+                case ..<50: return 0.17
+                case ..<75: return 0.5
                 default: return 1.0
                 }
             case .paidQuota, .outOfQuota:
@@ -196,7 +196,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 string: pctStr,
                 attributes: [
                     .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
-                    .baselineOffset: -0.5,
+                    .baselineOffset: -0.6,
                     .foregroundColor: state.textColor
                 ]
             )
