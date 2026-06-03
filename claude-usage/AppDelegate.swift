@@ -94,9 +94,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onQuit: { NSApp.terminate(nil) }
         )
         let hostingController = NSHostingController(rootView: usageView)
+        // Let the popover size itself to the SwiftUI content. Without this the
+        // popover uses a fixed height and taller content gets clipped at the top.
+        hostingController.sizingOptions = [.preferredContentSize]
 
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 300, height: 200)
+        popover.animates = false
         popover.behavior = .transient
         popover.contentViewController = hostingController
 
